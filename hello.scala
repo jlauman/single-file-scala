@@ -15,13 +15,15 @@ DS='$'; FN=${0#*/}; BN="${FN%%.*}" # filename and basename
 mkdir -p "./out" "./lib" "./bin"; rm -rf "./out/*" "./lib/*" "./bin/$BN.jar";
 if [ "$CMD" = "clean" ]; then rm -rf "./jdb.ini" "./bin" "./lib" "./out"; exit 0; fi
 if [ "$CMD" = "run" ]; then exec scala -classpath "$CP" "$0" "$@"; fi
-scalac -explain -sourcepath "." -classpath "$CP" -d "./out" "$0"
+echo ""; scalac -version; /usr/bin/time -f "%P cpu, %e seconds" scalac -explain -sourcepath "." -classpath "$CP" -d "./out" "$0"
+if [ "$CMD" = "compile" ]; then exit 0; fi
 if [ "$CMD" = "repl" ]; then exec scala -classpath "$CP:out"; fi
 if [ "$CMD" = "test" ]; then exec java -jar $(cs fetch "$JUNIT") --disable-banner --classpath "$CP:out" --exclude-engine junit-vintage --select-package ""; fi
 if [ "$CMD" = "debug" ]; then echo -e "stop at $BN${DS}package${DS}.breakpoint()\nrun" > "./jdb.ini"; exec jdb -sourcepath "." -classpath "$CP:out" "$BN" "$@"; fi
 if [ "$CMD" = "assemble" ]; then FILES=$(echo "$CP" | tr ":" "\n"); cd "./lib"; for FILE in $FILES; do jar xf "$FILE"; done; cd ".."; rm -f "./lib/META-INF/MANIFEST.MF"; fi
 if [ "$CMD" = "assemble" ]; then scalac -classpath "$CP" -d "./bin/$BN.jar" -Xmain-class "$BN" "$0"; jar uf "./bin/$BN.jar" "$0"; exec jar uf "./bin/$BN.jar" -C "./lib" "."; fi
-echo "usage: $0 <run|repl|test|debug|assemble|clean> [options]"; exit 1
+if [ "$CMD" = "watch" ]; then inotifywait -m "$0" -e close_write | while read d e f; do "$0" compile || true; done; fi
+echo "usage: $0 <compile|run|repl|debug|test|watch|assemble|clean|> [options]"; exit 1
 !#
 // do not move breakpoint into a package
 def breakpoint(): Unit = println("breakpoint!")
@@ -36,11 +38,6 @@ object hello:
         for arg <- args do println(s"arg=$arg")
         args.foreach(println)
         // repl.start(Array())
-
-
-object what:
-    def something(): Array[Int] =
-        return Array(1, 2, 3, 4)
 
 
 object repl:
@@ -76,4 +73,9 @@ object test:
         @Test def testStrings: Unit =
             val expected = "hello!"
             val obtained = "Hello!"
+            assertEquals(expected, obtained)
+
+        @Test def testIntegers: Unit =
+            val expected = 1
+            val obtained = 1.0
             assertEquals(expected, obtained)
