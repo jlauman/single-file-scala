@@ -11,22 +11,20 @@ JUNIT="org.junit.platform:junit-platform-console-standalone:1.8.2"
 
 CMD=""; if [ $# -gt 0 ]; then CMD="$1"; shift; fi
 WD="$(cd $(dirname "${BASH_SOURCE[0]}") > /dev/null && pwd)"
-FN=${0#*/}; BN="${FN%%.*}" # filename and basename
+DS='$'; FN=${0#*/}; BN="${FN%%.*}" # filename and basename
 mkdir -p "./out" "./lib" "./bin"; rm -rf "./out/*" "./lib/*" "./bin/$BN.jar";
+if [ "$CMD" = "clean" ]; then rm -rf "./jdb.ini" "./bin" "./lib" "./out"; exit 0; fi
 if [ "$CMD" = "run" ]; then exec scala -classpath "$CP" "$0" "$@"; fi
-if [ "$CMD" = "test" -o "$CMD" = "debug" -o "$CMD" == "assemble" ]; then scalac -explain -sourcepath "." -classpath "$CP" -d "./out" "$0"; fi
-if [ "$CMD" = "test" ]; then exec java -jar $(cs fetch "$JUNIT") --disable-banner --classpath "$CP:out" --exclude-engine junit-vintage --select-package test; fi
-if [ "$CMD" = "debug" ]; then echo "stop at $BN\$package$.breakpoint()" > "./jdb.ini"; echo "run" >> "./jdb.ini"; exec jdb -sourcepath "." -classpath "$CP:out" "$BN" "$@"; fi
+scalac -explain -sourcepath "." -classpath "$CP" -d "./out" "$0"
+if [ "$CMD" = "repl" ]; then exec scala -classpath "$CP:out"; fi
+if [ "$CMD" = "test" ]; then exec java -jar $(cs fetch "$JUNIT") --disable-banner --classpath "$CP:out" --exclude-engine junit-vintage --select-package ""; fi
+if [ "$CMD" = "debug" ]; then echo -e "stop at $BN${DS}package${DS}.breakpoint()\nrun" > "./jdb.ini"; exec jdb -sourcepath "." -classpath "$CP:out" "$BN" "$@"; fi
 if [ "$CMD" = "assemble" ]; then FILES=$(echo "$CP" | tr ":" "\n"); cd "./lib"; for FILE in $FILES; do jar xf "$FILE"; done; cd ".."; rm -f "./lib/META-INF/MANIFEST.MF"; fi
 if [ "$CMD" = "assemble" ]; then scalac -classpath "$CP" -d "./bin/$BN.jar" -Xmain-class "$BN" "$0"; jar uf "./bin/$BN.jar" "$0"; exec jar uf "./bin/$BN.jar" -C "./lib" "."; fi
-if [ "$CMD" = "clean" ]; then rm -rf "./jdb.ini" "./bin" "./lib" "./out"; exit 0; fi
-echo "usage: $0 <run|test|debug|assemble|clean> [options]"; exit 1
+echo "usage: $0 <run|repl|test|debug|assemble|clean> [options]"; exit 1
 !#
-import scala.annotation.nowarn
-
 // do not move breakpoint into a package
-def breakpoint(): Unit =
-    println("breakpoint!")
+def breakpoint(): Unit = println("breakpoint!")
 
 
 object hello:
@@ -40,13 +38,18 @@ object hello:
         // repl.start(Array())
 
 
-package repl:
+object what:
+    def something(): Array[Int] =
+        return Array(1, 2, 3, 4)
+
+
+object repl:
     import org.jline.reader.LineReader
     import org.jline.reader.LineReaderBuilder
     import org.jline.reader.EndOfFileException
     import org.jline.reader.UserInterruptException
 
-    @nowarn def start(args: Array[String]): Unit =
+    def start(args: Array[String]): Unit =
         println(s"donjonz!")
         val reader = LineReaderBuilder.builder().build()
         val prompt = ">> "
@@ -60,11 +63,11 @@ package repl:
                 println(s"line=${line}")
 
 
-package test:
+object test:
     import org.junit.jupiter.api.Assertions._
     import org.junit.jupiter.api.Test
 
-    @nowarn class TestSuite:
+    class TestSuite:
         @Test def testTheAnswer: Unit =
             val expected = 42
             val obtained = 42
