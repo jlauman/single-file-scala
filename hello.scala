@@ -15,7 +15,7 @@ DS='$'; FN=${0#*/}; BN="${FN%%.*}" # filename and basename
 mkdir -p "./out" "./lib" "./bin"; rm -rf "./out/*" "./lib/*" "./bin/$BN.jar";
 if [ "$CMD" = "clean" ]; then rm -rf "./jdb.ini" "./bin" "./lib" "./out"; exit 0; fi
 if [ "$CMD" = "run" ]; then exec scala -classpath "$CP" "$0" "$@"; fi
-echo ""; scalac -version; /usr/bin/time -f "%P cpu, %e seconds" scalac -explain -sourcepath "." -classpath "$CP" -d "./out" "$0"
+if [ ! -z "$CMD" ]; then echo ""; scalac -version; /usr/bin/time -f "%P cpu, %e seconds" scalac -explain -sourcepath "." -classpath "$CP" -d "./out" "$0"; fi
 if [ "$CMD" = "compile" ]; then exit 0; fi
 if [ "$CMD" = "repl" ]; then exec scala -classpath "$CP:out"; fi
 if [ "$CMD" = "test" ]; then exec java -jar $(cs fetch "$JUNIT") --disable-banner --classpath "$CP:out" --exclude-engine junit-vintage --select-package ""; fi
@@ -31,7 +31,7 @@ def breakpoint(): Unit = println("breakpoint!")
 
 object hello:
     def main(args: Array[String]) =
-        println("Hello, world")
+        println("Hello, world!")
         val x = 1
         var y = 2
         breakpoint()
